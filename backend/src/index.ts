@@ -78,7 +78,7 @@ app.post('/api/enrich', async (req, res) => {
     console.log(`[API] Enrichment request for type: ${type}, value: ${searchValue}`);
 
     if (type === 'ip') {
-        result = await ipLookup(searchValue, apiKeys?.shodan, apiKeys?.abuseipdb);
+        result = await ipLookup(searchValue, apiKeys?.shodan, apiKeys?.abuseipdb, apiKeys?.virustotal);
     } else if (type === 'domain') {
         result = await dnsLookup(searchValue);
     } else if (type === 'email') {

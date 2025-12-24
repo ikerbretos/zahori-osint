@@ -186,6 +186,7 @@ export const ENTITY_CONFIG: any = {
             { key: 'asn', label: 'ASN' },
             { key: 'isp', label: 'ISP' },
             { key: 'domain', label: 'DOMINIO WEB' },
+            { key: 'address', label: 'DIRECCIÓN' },
             { key: 'registry', label: 'REGISTRO' },
             { key: 'last_update', label: 'ÚLTIMA ACTUALIZACIÓN' }
         ]
