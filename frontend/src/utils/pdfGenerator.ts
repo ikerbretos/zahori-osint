@@ -1,155 +1,230 @@
 import { toPng } from 'html-to-image';
 import { ENTITY_CONFIG } from '../constants/entities';
+import logoReport from '../assets/logo_report.png';
 
 export const generatePDFReport = async (
-    workspaceRef: React.RefObject<HTMLDivElement>,
-    nodes: any[],
-    caseName: string
+  workspaceRef: React.RefObject<HTMLDivElement>,
+  nodes: any[],
+  caseName: string
 ) => {
-    if (!workspaceRef.current) return;
+  if (!workspaceRef.current) return;
 
-    try {
-        // Capturar imagen del grafo con alta calidad
-        const dataUrl = await toPng(workspaceRef.current, { backgroundColor: '#0a0a0a', pixelRatio: 2 });
+  try {
+    // Capturar imagen del grafo con fondo TRANSPARENTE
+    const dataUrl = await toPng(workspaceRef.current, { backgroundColor: 'transparent', pixelRatio: 2 });
 
-        // Preparar ventana de impresión
-        const win = window.open('', '_blank');
-        if (!win) {
-            alert("Bloqueo de ventanas emergentes activado. Permite popups para generar el reporte.");
-            return;
-        }
+    // Convertir el logo a Base64 para asegurar que se vea en la ventana de impresión (evita problemas de rutas)
+    const logoResponse = await fetch(logoReport);
+    const logoBlob = await logoResponse.blob();
+    const logoBase64 = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(logoBlob);
+    });
 
-        const dateStr = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        const timeStr = new Date().toLocaleTimeString('es-ES');
+    // Preparar ventana de impresión
+    const win = window.open('', '_blank');
+    if (!win) {
+      alert("Bloqueo de ventanas emergentes activado. Permite popups para generar el reporte.");
+      return;
+    }
 
-        // Agrupar nodos por tipo
-        const grouped: { [key: string]: any[] } = {};
-        nodes.forEach((n: any) => {
-            if (!grouped[n.type]) grouped[n.type] = [];
-            grouped[n.type].push(n);
-        });
+    const dateStr = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const timeStr = new Date().toLocaleTimeString('es-ES');
 
-        const sortedTypes = Object.keys(grouped).sort((a, b) => {
-            if (a === 'target') return -1;
-            if (b === 'target') return 1;
-            return a.localeCompare(b);
-        });
+    // Agrupar nodos por tipo
+    const grouped: { [key: string]: any[] } = {};
+    nodes.forEach((n: any) => {
+      if (!grouped[n.type]) grouped[n.type] = [];
+      grouped[n.type].push(n);
+    });
 
-        // Estilos CSS para el reporte (Estilo Cyberpunk/Professional limpio para impresión)
-        const styles = `
+    const sortedTypes = Object.keys(grouped).sort((a, b) => {
+      if (a === 'target') return -1;
+      if (b === 'target') return 1;
+      return a.localeCompare(b);
+    });
+
+    // ESTILOS PROFESIONALES (Corporate White)
+    const styles = `
+      /* Ocultar encabezados/pies de página del navegador (about:blank) al eliminar márgenes de página */
       @page { margin: 0; size: A4; }
+      
       body { 
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-        background: #fff; 
-        color: #1a1a1a; 
+        font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+        background: #ffffff; 
+        color: #1f2937; 
+        line-height: 1.5;
         margin: 0;
         padding: 0;
         -webkit-print-color-adjust: exact; 
       }
       
+      /* Wrapper para simular márgenes y contener el contenido */
+      .content-wrapper {
+        padding: 2.5cm;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      
       /* COVER PAGE */
       .cover {
-        height: 100vh;
-        width: 100%;
+        height: 100vh; /* Full height */
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        background: #0a0a0a;
-        color: #fff;
         text-align: center;
         page-break-after: always;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 0 2.5cm; /* Márgenes laterales */
         position: relative;
-        overflow: hidden;
       }
-      .cover::before {
-        content: "";
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: radial-gradient(circle at center, #1e293b 0%, #000 70%);
-        z-index: 0;
-      }
-      .cover-content { position: relative; z-index: 1; width: 80%; }
-      .brand { font-size: 14px; letter-spacing: 4px; color: #06b6d4; text-transform: uppercase; margin-bottom: 20px; }
-      .title { font-size: 48px; font-weight: bold; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 20px rgba(6,182,212,0.5); }
-      .subtitle { font-size: 18px; color: #94a3b8; margin-bottom: 60px; font-weight: 300; }
-      .meta-box { border-top: 1px solid #334155; border-bottom: 1px solid #334155; padding: 20px 0; margin-top: 40px; display: flex; justify-content: space-around; }
-      .meta-item { display: flex; flex-direction: column; gap: 5px; }
-      .meta-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
-      .meta-value { font-size: 14px; color: #fff; font-weight: bold; }
+      .brand { font-size: 12px; letter-spacing: 2px; color: #6b7280; text-transform: uppercase; margin-bottom: 40px; font-weight: 600; }
+      .title { font-size: 36px; color: #111827; font-weight: 800; margin-bottom: 10px; text-transform: uppercase; letter-spacing: -0.5px; }
+      .subtitle { font-size: 18px; color: #4b5563; margin-bottom: 60px; font-weight: 400; }
+      
+      .meta-table { margin-top: 40px; border-collapse: collapse; margin: 0 auto; min-width: 300px; }
+      .meta-table td { padding: 12px 24px; border-bottom: 1px solid #f3f4f6; text-align: left; }
+      .meta-label { font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
+      .meta-value { font-size: 14px; font-weight: 600; color: #374151; }
 
       /* CONTENT PAGES */
-      .page { padding: 40px 50px; page-break-after: always; }
-      .page-header { border-bottom: 2px solid #06b6d4; padding-bottom: 10px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
-      .page-title { font-size: 16px; color: #0f172a; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
-      .page-number { font-size: 10px; color: #64748b; }
+      .page { 
+        page-break-after: always; 
+        padding: 2.5cm; /* Margen simulado */
+        position: relative;
+        min-height: 100vh;
+        box-sizing: border-box;
+      }
       
-      h2 { margin-top: 0; color: #0f172a; font-size: 20px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 10px; }
-      h2::before { content: ""; display: block; width: 6px; height: 24px; background: #06b6d4; }
+      .header { 
+        border-bottom: 2px solid #000; 
+        padding-bottom: 10px; 
+        margin-bottom: 40px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: flex-end; 
+      }
+      .header-title { font-size: 14px; color: #6b7280; font-weight: 600; text-transform: uppercase; }
       
-      .graph-container { margin: 20px 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
-      .graph-img { width: 100%; display: block; }
+      h2 { 
+        color: #111827; 
+        font-size: 22px; 
+        font-weight: 700; 
+        border-left: 4px solid #111827;
+        padding-left: 15px;
+        margin-top: 40px;
+        margin-bottom: 20px;
+      }
       
-      .section-summary { background: #f1f5f9; padding: 15px; border-left: 4px solid #06b6d4; margin-bottom: 30px; font-size: 12px; color: #475569; }
+      .section-summary { 
+        background: #f9fafb; 
+        padding: 20px; 
+        border: 1px solid #e5e7eb;
+        border-radius: 4px;
+        margin-bottom: 30px; 
+        font-size: 13px; 
+        color: #4b5563; 
+      }
 
-      /* ENTITY CARDS */
-      .entity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-      .entity-card { background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 15px; break-inside: avoid; page-break-inside: avoid; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-      .entity-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #cbd5e1; padding-bottom: 8px; margin-bottom: 10px; }
-      .entity-type { font-size: 9px; background: #0f172a; color: #fff; padding: 2px 6px; rounded: 3px; text-transform: uppercase; border-radius: 3px; }
-      .entity-main { font-weight: bold; font-size: 13px; color: #0f172a; }
+      /* GRAPH */
+      .graph-container { 
+        margin: 20px 0; 
+        border: 1px solid #e5e7eb; 
+        border-radius: 4px; 
+        overflow: hidden; 
+        background: #f9fafb; 
+        padding: 20px;
+      }
+      .graph-img { width: 100%; display: block; mix-blend-mode: multiply; }
+
+      /* TABLES / ENTITIES */
+      .entity-group { margin-bottom: 40px; }
+      .entity-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 25px; border: 1px solid #e5e7eb; }
+      .entity-table th { background: #f3f4f6; text-align: left; padding: 10px 15px; font-weight: 700; color: #374151; border-bottom: 1px solid #e5e7eb; }
+      .entity-table td { padding: 10px 15px; border-bottom: 1px solid #f3f4f6; color: #4b5563; vertical-align: top; }
+      .entity-table tr:last-child td { border-bottom: none; }
       
-      .data-table { width: 100%; border-collapse: collapse; font-size: 10px; }
-      .data-table td { padding: 3px 0; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
-      .data-key { width: 35%; color: #64748b; font-weight: 600; text-transform: uppercase; }
-      .data-val { color: #334155; word-break: break-all; }
+      .label-cell { width: 30%; font-weight: 600; color: #1f2937; }
       
-      .footer { position: fixed; bottom: 20px; left: 0; right: 0; text-align: center; font-size: 8px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+      .badge { 
+        display: inline-block; 
+        padding: 2px 8px; 
+        border-radius: 99px; 
+        font-size: 10px; 
+        font-weight: 700; 
+        background: #e5e7eb; 
+        color: #374151; 
+        text-transform: uppercase;
+      }
+
+      .footer { 
+        position: fixed; 
+        bottom: 1.5cm; /* Subimos el footer para que esté dentro del área imprimible */
+        left: 0; 
+        right: 0; 
+        text-align: center; 
+        font-size: 9px; 
+        color: #9ca3af; 
+        border-top: 1px solid #e5e7eb; 
+        padding-top: 10px;
+        background: #fff;
+        width: 100%;
+        z-index: 10;
+      }
     `;
 
-        let html = `
+    let html = `
       <html>
       <head>
-        <title>NEXUS DOSSIER - ${caseName}</title>
+        <title>Report - ${caseName}</title>
         <style>${styles}</style>
       </head>
       <body>
         <!-- COVER -->
         <div class="cover">
-          <div class="cover-content">
-            <div class="brand">Nexus Intelligence Suite</div>
-            <div class="title">Dossier de Investigación</div>
+            <div style="margin-bottom: 40px;">
+              <img src="${logoBase64}" style="width: 280px; height: auto;" />
+            </div>
+            <div class="title">Informe de Investigación</div>
             <div class="subtitle">${caseName}</div>
             
-            <div class="meta-box">
-              <div class="meta-item">
-                <span class="meta-label">Fecha</span>
-                <span class="meta-value">${dateStr}</span>
-              </div>
-              <div class="meta-item">
-                <span class="meta-label">Hora</span>
-                <span class="meta-value">${timeStr}</span>
-              </div>
-              <div class="meta-item">
-                <span class="meta-label">Entidades</span>
-                <span class="meta-value">${nodes.length}</span>
-              </div>
+            <table class="meta-table">
+              <tr>
+                <td><span class="meta-label">Fecha de Emisión</span></td>
+                <td><span class="meta-value">${dateStr}</span></td>
+              </tr>
+              <tr>
+                <td><span class="meta-label">Referencia</span></td>
+                <td><span class="meta-value">ZAH-${Math.floor(Math.random() * 10000)}</span></td>
+              </tr>
+              <tr>
+                <td><span class="meta-label">Analista</span></td>
+                <td><span class="meta-value">Operador Zahori</span></td>
+              </tr>
+               <tr>
+                <td><span class="meta-label">Alcance</span></td>
+                <td><span class="meta-value">${nodes.length} Entidades Identificadas</span></td>
+              </tr>
+            </table>
+
+            <div style="margin-top: 100px; font-size: 10px; color: #9ca3af;">
+              CONFIDENCIAL // SOLO PARA USO AUTORIZADO
             </div>
-          </div>
-          <div style="position: absolute; bottom: 40px; font-size: 10px; color: #475569;">CONFIDENTIAL / FOR OFFICIAL USE ONLY</div>
         </div>
 
         <!-- PAGE 1: OVERVIEW -->
         <div class="page">
-          <div class="page-header">
-            <div class="page-title">Mapa de Relaciones</div>
-            <div class="page-number">01</div>
+          <div class="header">
+            <div class="header-title">Resumen Ejecutivo</div>
+            <div class="header-title">01</div>
           </div>
           
-          <h2>Visualización Gráfica</h2>
+          <h2>Mapa de Relaciones</h2>
           <div class="section-summary">
-            Este gráfico representa todas las conexiones y entidades descubiertas durante la investigación.
-            Se han detectado <strong>${nodes.length} nodos</strong> y múltiples relaciones cruzadas.
+            El presente gráfico ilustra la topología de la red investigada. Se han detectado <strong>${nodes.length} nodos activos</strong>.
+            La visualización destaca las conexiones directas e indirectas entre los objetivos principales.
           </div>
           
           <div class="graph-container">
@@ -158,79 +233,91 @@ export const generatePDFReport = async (
         </div>
     `;
 
-        // PAGES FOR ENTITIES
-        let pageNum = 2;
-
-        sortedTypes.forEach(type => {
-            const groupNodes = grouped[type];
-            const config = ENTITY_CONFIG[type] || ENTITY_CONFIG.target;
-            const typeLabel = config.label || type.toUpperCase();
-
-            html += `
-        <div class="page">
-          <div class="page-header">
-            <div class="page-title">Inteligencia de ${typeLabel}s</div>
-            <div class="page-number">0${pageNum++}</div>
+    // PAGES FOR ENTITIES
+    html += `<div class="page">`;
+    html += `
+          <div class="header">
+            <div class="header-title">Detalle de Entidades</div>
+            <div class="header-title">02</div>
           </div>
-          
-          <h2>Detalle de ${typeLabel}s (${groupNodes.length})</h2>
-          <div class="entity-grid">
         `;
 
-            groupNodes.forEach(n => {
-                const mainLabel = n.data.label || n.data.ip || n.data.email || n.data.address || n.data.number || n.data.name || n.id;
+    sortedTypes.forEach(type => {
+      const groupNodes = grouped[type];
+      const config = ENTITY_CONFIG[type] || ENTITY_CONFIG.target;
+      const typeLabel = config.label || type.toUpperCase();
 
-                html += `
-             <div class="entity-card">
-               <div class="entity-header">
-                 <span class="entity-main">${mainLabel}</span>
-                 <span class="entity-type">${typeLabel}</span>
-               </div>
-               <table class="data-table">
-           `;
+      html += `
+          <div class="entity-group">
+           <h2>${typeLabel}s <span style="font-size: 14px; color: #6b7280; font-weight: normal; margin-left: 10px;">(${groupNodes.length})</span></h2>
+        `;
 
-                Object.entries(n.data).forEach(([key, val]) => {
-                    if (['x', 'y', 'id'].includes(key)) return;
-                    // Skip main label repetition if key matches common identifiers
-                    if ((key === 'ip' || key === 'email' || key === 'name') && val === mainLabel) return;
-
-                    let displayVal = val;
-                    if (typeof val === 'object') displayVal = JSON.stringify(val);
-
-                    html += `
-               <tr>
-                 <td class="data-key">${key.replace(/_/g, ' ')}</td>
-                 <td class="data-val">${displayVal}</td>
-               </tr>
-             `;
-                });
-
-                if (n.notes) {
-                    html += `
-               <tr>
-                 <td class="data-key" style="color: #0ea5e9;">NOTAS</td>
-                 <td class="data-val" style="font-style: italic;">${n.notes}</td>
-               </tr>
-             `;
-                }
-
-                html += `</table></div>`;
-            });
-
-            html += `</div></div>`;
-        });
+      groupNodes.forEach(n => {
+        const mainLabel = n.data.label || n.data.ip || n.data.domain || n.data.email || n.data.name || n.id;
 
         html += `
-      <div class="footer">Generado por Nexus OSINT - ${new Date().getFullYear()}</div>
-      <script>window.print();</script>
+            <table class="entity-table">
+               <thead>
+                 <tr>
+                   <th colspan="2" style="display: flex; align-items: center; justify-content: space-between;">
+                     <span>${mainLabel}</span>
+                     <span class="badge">${typeLabel}</span>
+                   </th>
+                 </tr>
+               </thead>
+               <tbody>
+           `;
+
+        // Data Rows
+        Object.entries(n.data).forEach(([key, val]) => {
+          if (['x', 'y', 'id', 'label'].includes(key)) return;
+          if (typeof val === 'object') return; // Skip complex objects for simple table
+
+          html += `
+               <tr>
+                 <td class="label-cell">${key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')}</td>
+                 <td>${val}</td>
+               </tr>
+             `;
+        });
+
+        // Notes
+        if (n.notes) {
+          html += `
+               <tr>
+                 <td class="label-cell" style="color: #059669;">Observaciones</td>
+                 <td style="font-style: italic; background: #ecfdf5; color: #065f46;">${n.notes}</td>
+               </tr>
+             `;
+        }
+
+        html += `</tbody></table>`;
+      });
+      html += `</div>`;
+    });
+
+    html += `</div>`; // End Page
+
+    html += `
+      <div class="footer">
+        Generado automáticamente por Zahori OSINT Suite &bull; ${new Date().getFullYear()} &bull; Documento Confidencial
+      </div>
+      <script>
+        // Esperar a que todo cargue (imágenes) antes de imprimir
+        window.onload = function() {
+           setTimeout(function() {
+             window.print();
+           }, 500); // Pequeño delay extra de seguridad
+        };
+      </script>
       </body></html>
     `;
 
-        win.document.write(html);
-        win.document.close();
+    win.document.write(html);
+    win.document.close();
 
-    } catch (err) {
-        console.error("Error generating PDF:", err);
-        alert("Error al generar el reporte PDF.");
-    }
+  } catch (err) {
+    console.error("Error generating PDF:", err);
+    alert("Error al generar el reporte PDF.");
+  }
 };

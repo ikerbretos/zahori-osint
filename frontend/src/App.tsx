@@ -17,6 +17,8 @@ import {
   Download, Image as ImageIcon, FileJson, Upload, Calendar, Printer,
   FolderPlus, LayoutTemplate
 } from 'lucide-react';
+import logo from './assets/logo.png';
+import logoWelcome from './assets/logo_welcome.png';
 
 export default function App() {
   const {
@@ -145,11 +147,20 @@ export default function App() {
     reader.onload = async (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
-        const res = await axios.post('http://localhost:3001/api/cases', {
-          name: `IMPORT_${Date.now()}`,
-          description: 'Importado de JSON'
-        });
-        setCurrentCaseId(res.data.id);
+
+        // Priorizar ID existente en el archivo importado
+        if (json.id) {
+          setCurrentCaseId(json.id);
+          // Opcional: Notificar al backend que 'cargamos' este caso si fuera necesario, 
+          // pero para la UI basta con setear el ID.
+        } else {
+          // Fallback para archivos antiguos: Crear nueva sesión en backend
+          const res = await axios.post('http://localhost:3001/api/cases', {
+            name: `IMPORT_${Date.now()}`,
+            description: 'Importado de JSON'
+          });
+          setCurrentCaseId(res.data.id);
+        }
 
         if (json.nodes && json.links) {
           setNodes(json.nodes);
@@ -239,7 +250,13 @@ export default function App() {
   const handleExport = async (format: 'json' | 'jpg' | 'png') => {
     setShowExportMenu(false);
     if (format === 'json') {
-      const data = JSON.stringify({ nodes, links }, null, 2);
+      const exportData = {
+        id: currentCaseId,
+        exportedAt: new Date().toISOString(),
+        nodes,
+        links
+      };
+      const data = JSON.stringify(exportData, null, 2);
       const blob = new Blob([data], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -418,10 +435,11 @@ export default function App() {
     return (
       <div className="h-screen bg-[#050505] flex items-center justify-center font-sans text-white bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-900 via-[#050505] to-[#050505]">
         {/* Welcome Screen Content */}
-        <div className="max-w-md w-full p-8 border border-white/5 rounded-2xl text-center space-y-8 animate-in fade-in zoom-in duration-500 bg-white/5 backdrop-blur-xl shadow-2xl">
-          <div className="space-y-4">
-            <div className="w-20 h-20 bg-cyan-500/10 border border-cyan-500/30 rounded-2xl flex items-center justify-center mx-auto shadow-[0_0_40px_rgba(6,182,212,0.15)]"><Shield className="text-cyan-400" size={40} /></div>
-            <h1 className="text-3xl font-bold tracking-[0.3em] uppercase italic text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500">NEXUS</h1>
+        <div className="max-w-lg w-full p-6 border border-white/5 rounded-2xl text-center space-y-4 animate-in fade-in zoom-in duration-500 bg-white/5 backdrop-blur-xl shadow-2xl">
+          <div className="space-y-0">
+            <div className="flex items-center justify-center mx-auto -my-10">
+              <img src={logoWelcome} alt="Zahori Logo" className="w-96 h-96 object-contain" />
+            </div>
           </div>
           <div className="grid gap-3">
             <button onClick={() => handleCreateProject(`CASE_${Math.floor(Math.random() * 1000)}`)} className="flex items-center gap-4 p-4 bg-black/40 border border-white/10 rounded-xl hover:bg-cyan-500/10 transition-all text-neutral-300 hover:text-cyan-400 group">
@@ -484,8 +502,10 @@ export default function App() {
         {/* HEADER */}
         <header className="h-14 bg-[#111111]/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-6 z-30 shrink-0 relative">
           <div className="flex items-center gap-4">
-            <button onClick={() => setIsWelcomeScreen(true)} className="w-8 h-8 flex items-center justify-center bg-cyan-950/30 rounded border border-cyan-500/20 text-cyan-400 hover:scale-105 transition"><Shield size={16} /></button>
-            <h1 className="font-bold text-lg tracking-widest text-white uppercase italic">NEXUS <span className="text-neutral-600 font-mono text-[10px] not-italic tracking-normal">{currentCaseId || 'UNSAVED'}</span></h1>
+            <button onClick={() => setIsWelcomeScreen(true)} className="w-8 h-8 flex items-center justify-center bg-cyan-950/30 rounded border border-cyan-500/20 text-cyan-400 hover:scale-105 transition">
+              <img src={logo} alt="Home" className="w-5 h-5 object-contain" />
+            </button>
+            <h1 className="font-bold text-lg tracking-widest text-white uppercase italic">ZAHORI <span className="text-neutral-600 font-mono text-[10px] not-italic tracking-normal">{currentCaseId || 'UNSAVED'}</span></h1>
           </div>
           {/* ... Header Right with Export ... */}
         </header>
