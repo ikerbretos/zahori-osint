@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useGraphStore } from '../store/useGraphStore';
-import { Play, Loader2, AlertCircle, X } from 'lucide-react';
+import { Play, Loader2, X } from 'lucide-react';
 
 interface ContextMenuProps {
     x: number;
@@ -9,7 +9,7 @@ interface ContextMenuProps {
     nodeId: string;
     nodeType: string;
     onClose: () => void;
-    apiKeys: any; // Pass keys for config
+    apiKeys: any;
     isLocked: boolean;
     onToggleLock: () => void;
 }
@@ -25,10 +25,30 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, nodeId, nodeType
     const [plugins, setPlugins] = useState<Plugin[]>([]);
     const [loading, setLoading] = useState(true);
     const [executing, setExecuting] = useState<string | null>(null);
-    const { setNodes, setLinks } = useGraphStore();
-    // ... useEffect ...
+    // Aunque useGraphStore se importa, aquí no lo usamos directamente para recargar, 
+    // pero lo dejamos por si se extiende la funcionalidad.
+    const { } = useGraphStore(); 
 
-   
+    // 1. Cargar plugins disponibles al abrir el menú
+    useEffect(() => {
+        const fetchPlugins = async () => {
+            setLoading(true);
+            try {
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+                const res = await axios.get(`${API_URL}/plugins?type=${nodeType}`);
+                setPlugins(res.data);
+            } catch (err) {
+                console.error("Failed to fetch plugins", err);
+                setPlugins([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchPlugins();
+    }, [nodeType]);
+
+    // 2. Función para ejecutar el plugin
     const handleExecute = async (pluginName: string) => {
         setExecuting(pluginName);
         try {
@@ -40,7 +60,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, nodeId, nodeType
                 config: { apiKeys }
             });
             
-            alert("Plugin ejecutado correctamente. Por favor, recarga el caso o mueve el nodo para ver los nuevos datos.");
+            alert("Plugin ejecutado correctamente. Por favor, recarga la página o el caso para ver los nuevos nodos.");
             onClose();
         } catch (error) {
             console.error("Error ejecutando plugin:", error);
@@ -49,12 +69,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, nodeId, nodeType
             setExecuting(null);
         }
     };
-
-    return (
-        // ... resto del código ...
-    
-
-    
 
     return (
         <div
